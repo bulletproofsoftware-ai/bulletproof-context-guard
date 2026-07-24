@@ -1,4 +1,4 @@
-# context-guard
+# bulletproof-context-guard
 
 **A Claude Code plugin that watches your context window and warns before you run out.**
 
