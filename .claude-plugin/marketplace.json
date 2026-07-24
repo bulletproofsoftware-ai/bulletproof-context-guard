@@ -1,0 +1,14 @@
+{
+  "name": "context-guard",
+  "description": "Context window monitor",
+  "owner": { "name": "bulletproofsoftware-ai" },
+  "plugins": [
+    {
+      "name": "context-guard",
+      "description": "Context window monitor with 4-tier escalation",
+      "version": "3.0.0",
+      "source": "./",
+      "author": { "name": "bulletproofsoftware-ai" }
+    }
+  ]
+}

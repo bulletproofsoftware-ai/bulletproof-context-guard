@@ -1,0 +1,24 @@
+{
+  "name": "context-guard",
+  "version": "3.1.0",
+  "description": "Context window monitor — 4-tier escalation with dynamic threshold, token-based precision, 3-sample velocity tracking, state-save verification, warning telemetry, compaction recovery. v3.1: repaired L3/L4 announcements, L4 hard-block on subagent dispatch, persistent L4 reminder, and fixed dynamic-threshold poisoning (manual /compact events no longer inflate the threshold into false escalations).",
+  "author": { "name": "bulletproofsoftware-ai" },
+  "hooks": "./hooks/hooks.json",
+  "configuration": {
+    "dynamic_threshold": {
+      "log_entries": 10,
+      "fallback": 16,
+      "max_sample_remaining": 30
+    },
+    "thresholds": {
+      "level_1_distance": 30,
+      "level_2_distance": 15,
+      "level_3_distance": 7,
+      "level_4_distance": 3
+    },
+    "velocity": {
+      "sample_count": 3,
+      "escalation_rate": 5
+    }
+  }
+}

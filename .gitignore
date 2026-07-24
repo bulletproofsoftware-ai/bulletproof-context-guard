@@ -1,0 +1,6 @@
+state/sessions/
+state/telemetry/
+state/compaction.log
+state/warnings.log
+state/warnings.log.tmp
+mcp/__pycache__/
