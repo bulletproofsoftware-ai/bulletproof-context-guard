@@ -1,0 +1,46 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "bulletproof-context-guard",
+      "version": "3.1.0",
+      "description": "Claude Code plugin: context-window monitor with 4-tier escalation and a 5-compartment usage MCP server.",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "author": "bulletproofsoftware-ai"
+    }
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "python",
+      "version": ">=3.10",
+      "scope": "required",
+      "description": "CPython runtime for mcp/server.py, hooks/thresholds.py, hooks/velocity.py. Standard library only.",
+      "purl": "pkg:generic/python@3.10"
+    },
+    {
+      "type": "application",
+      "name": "bash",
+      "scope": "required",
+      "description": "Shell runtime for the three lifecycle hooks and the status-line sensor.",
+      "purl": "pkg:generic/bash"
+    },
+    {
+      "type": "application",
+      "name": "jq",
+      "scope": "required",
+      "description": "JSON processor used by the Bash hooks to parse Claude Code hook input. Degrades to safe defaults if absent.",
+      "purl": "pkg:generic/jq"
+    },
+    {
+      "type": "application",
+      "name": "coreutils",
+      "scope": "required",
+      "description": "Provides date, tr, find, awk-equivalent utilities invoked by the shell scripts.",
+      "purl": "pkg:generic/coreutils"
+    }
+  ]
+}
