@@ -2,6 +2,11 @@
 
 **A Claude Code plugin that watches your context window and warns before you run out.**
 
+![bulletproof-context-guard — overview](docs/media/infographic.png)
+
+See [`docs/`](docs/) for full documentation and [`media/`](media/) for the generated
+overview deck, video, and briefing.
+
 `context-guard` monitors context-window usage during a Claude Code session and
 escalates through four warning tiers as you approach the limit — so compaction never
 takes you by surprise. It also ships an MCP server that breaks current usage into five
