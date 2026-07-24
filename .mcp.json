@@ -1,0 +1,22 @@
+{
+  "$schema": "https://claude.ai/schemas/mcp-bundle-v1.json",
+  "name": "context-guard-mcp",
+  "version": "1.0.0",
+  "description": "Context budget MCP server — exposes 5-compartment context window breakdown",
+  "servers": {
+    "context-budget": {
+      "command": "python3",
+      "args": ["mcp/server.py"],
+      "description": "Context window usage with system_prompt/conversation/tool_results/file_contents/working_memory split",
+      "tools": [
+        "context_budget",
+        "context_compartments",
+        "context_velocity",
+        "context_thresholds"
+      ]
+    }
+  },
+  "requires": {
+    "python": ">=3.10"
+  }
+}
