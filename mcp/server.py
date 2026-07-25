@@ -16,24 +16,69 @@ events consumable by the conductor plugin.
 """
 
 import json
-import os
+import re
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+# ---------------------------------------------------------------------------
 # MCP protocol over stdio
-def send_response(id_, result):
-    msg = {"jsonrpc": "2.0", "id": id_, "result": result}
-    out = json.dumps(msg)
-    sys.stdout.write(f"Content-Length: {len(out)}\r\n\r\n{out}")
+#
+# MCP stdio transport is NEWLINE-DELIMITED JSON: one JSON-RPC message per line.
+# This server previously wrote LSP-style "Content-Length:" framing, which no
+# MCP client speaks, so the advertised context_budget tool never once
+# responded to a real client — the handshake simply never completed.
+#
+# (The old framing also computed Content-Length with len() on a str, i.e.
+# characters rather than UTF-8 bytes, which would have mis-framed any
+# non-ASCII payload even for a client that did speak LSP framing.)
+# ---------------------------------------------------------------------------
+def _write_message(msg):
+    """Write one JSON-RPC message as a single line, per MCP stdio transport."""
+    # ensure_ascii keeps the payload on one line and byte-safe regardless of
+    # the terminal encoding; separators drop insignificant whitespace.
+    line = json.dumps(msg, ensure_ascii=True, separators=(",", ":"))
+    sys.stdout.write(line + "\n")
     sys.stdout.flush()
 
+
+def send_response(id_, result):
+    _write_message({"jsonrpc": "2.0", "id": id_, "result": result})
+
+
 def send_error(id_, code, message):
-    msg = {"jsonrpc": "2.0", "id": id_, "error": {"code": code, "message": message}}
-    out = json.dumps(msg)
-    sys.stdout.write(f"Content-Length: {len(out)}\r\n\r\n{out}")
-    sys.stdout.flush()
+    _write_message(
+        {"jsonrpc": "2.0", "id": id_, "error": {"code": code, "message": message}}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Untrusted identifiers
+# ---------------------------------------------------------------------------
+_SAFE_SEGMENT = re.compile(r"\A[A-Za-z0-9._-]{1,255}\Z")
+
+
+def safe_child(base: Path, identifier, suffix: str = "") -> Path:
+    """Resolve base/<identifier><suffix>, or raise ValueError.
+
+    session_id reaches this server as a tool argument, so it is untrusted.
+    Joining it directly let "../.." escape the sessions directory, and let an
+    absolute path replace the base entirely (pathlib discards the left operand
+    when the right is absolute) — allowing an arbitrary JSON file to be read
+    back to the caller, and an arbitrary path to be written by the telemetry
+    writer.
+    """
+    if not isinstance(identifier, str) or not _SAFE_SEGMENT.match(identifier):
+        raise ValueError(f"unsafe identifier: {identifier!r}")
+    if identifier in (".", "..") or identifier.startswith("."):
+        raise ValueError(f"unsafe identifier: {identifier!r}")
+    candidate = base / f"{identifier}{suffix}"
+    resolved_base = base.resolve()
+    resolved = candidate.resolve()
+    if resolved != resolved_base and resolved_base not in resolved.parents:
+        raise ValueError(f"identifier escapes {base}: {identifier!r}")
+    return resolved
 
 # Paths
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
@@ -262,7 +307,13 @@ def write_telemetry(session_id, budget_data):
         },
     }
 
-    event_file = telemetry_dir / f"{session_id}.json"
+    # session_id originates from a tool argument or a session record, so it is
+    # untrusted here: without this check a crafted id wrote JSON to an
+    # arbitrary path.
+    try:
+        event_file = safe_child(telemetry_dir, session_id, ".json")
+    except ValueError:
+        return
     with open(event_file, "w") as f:
         json.dump(event, f, indent=2)
 
@@ -273,7 +324,13 @@ def handle_context_budget(params):
     session_id = params.get("session_id")
 
     if session_id:
-        session_dir = SESSIONS_DIR / session_id
+        # Untrusted tool argument: "../.." escaped SESSIONS_DIR and an
+        # absolute path replaced it outright, so any readable JSON file could
+        # be pulled back to the caller.
+        try:
+            session_dir = safe_child(SESSIONS_DIR, session_id)
+        except ValueError:
+            return {"error": "Invalid session_id"}
     else:
         session_dir = get_latest_session()
 
@@ -327,78 +384,89 @@ def handle_context_budget(params):
 
 
 def main():
-    """MCP stdio server main loop."""
-    import sys
+    """MCP stdio server main loop.
 
+    Reads newline-delimited JSON-RPC, one message per line, which is what the
+    MCP stdio transport specifies and what clients actually send.
+    """
     while True:
-        # Read Content-Length header
         line = sys.stdin.readline()
         if not line:
             break
         line = line.strip()
+        if not line:
+            continue
 
+        # Tolerate a client that still sends LSP-style framing: skip the
+        # header and its blank line, then read the declared body.
         if line.startswith("Content-Length:"):
-            content_length = int(line.split(":")[1].strip())
-            # Read blank line
-            sys.stdin.readline()
-            # Read body
-            body = sys.stdin.read(content_length)
             try:
-                request = json.loads(body)
-            except json.JSONDecodeError:
+                content_length = int(line.split(":", 1)[1].strip())
+            except (IndexError, ValueError):
                 continue
+            sys.stdin.readline()  # blank separator
+            body = sys.stdin.read(content_length)
+        else:
+            body = line
 
-            method = request.get("method", "")
-            id_ = request.get("id")
+        try:
+            request = json.loads(body)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(request, dict):
+            continue
 
-            if method == "initialize":
-                send_response(id_, {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {"listChanged": False}},
-                    "serverInfo": {"name": "context-guard-mcp", "version": "3.1.0"},
-                })
-            elif method == "notifications/initialized":
-                pass  # No response needed
-            elif method == "tools/list":
-                send_response(id_, {
-                    "tools": [{
-                        "name": "context_budget",
-                        "description": "Returns context window usage with 5-compartment breakdown (system_prompt, conversation_history, tool_results, file_contents, working_memory), escalation tier, and telemetry. Use to monitor context consumption and plan session strategy.",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "session_id": {
-                                    "type": "string",
-                                    "description": "Optional session ID. If omitted, uses the most recent active session.",
-                                },
+        method = request.get("method", "")
+        id_ = request.get("id")
+
+        if method == "initialize":
+            send_response(id_, {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {"listChanged": False}},
+                "serverInfo": {"name": "context-guard-mcp", "version": "3.1.0"},
+            })
+        elif method == "notifications/initialized":
+            pass  # No response needed
+        elif method == "tools/list":
+            send_response(id_, {
+                "tools": [{
+                    "name": "context_budget",
+                    "description": "Returns context window usage with 5-compartment breakdown (system_prompt, conversation_history, tool_results, file_contents, working_memory), escalation tier, and telemetry. Use to monitor context consumption and plan session strategy.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "session_id": {
+                                "type": "string",
+                                "description": "Optional session ID. If omitted, uses the most recent active session.",
                             },
                         },
-                    }],
-                })
-            elif method == "tools/call":
-                tool_name = request.get("params", {}).get("name", "")
-                arguments = request.get("params", {}).get("arguments", {})
-                if tool_name == "context_budget":
-                    try:
-                        result = handle_context_budget(arguments)
-                        send_response(id_, {
-                            "content": [{
-                                "type": "text",
-                                "text": json.dumps(result, indent=2),
-                            }],
-                        })
-                    except Exception as e:
-                        send_response(id_, {
-                            "content": [{"type": "text", "text": json.dumps({"error": str(e)})}],
-                            "isError": True,
-                        })
-                else:
-                    send_error(id_, -32601, f"Unknown tool: {tool_name}")
-            elif method == "ping":
-                send_response(id_, {})
+                    },
+                }],
+            })
+        elif method == "tools/call":
+            tool_name = request.get("params", {}).get("name", "")
+            arguments = request.get("params", {}).get("arguments", {})
+            if tool_name == "context_budget":
+                try:
+                    result = handle_context_budget(arguments)
+                    send_response(id_, {
+                        "content": [{
+                            "type": "text",
+                            "text": json.dumps(result, indent=2),
+                        }],
+                    })
+                except Exception as e:
+                    send_response(id_, {
+                        "content": [{"type": "text", "text": json.dumps({"error": str(e)})}],
+                        "isError": True,
+                    })
             else:
-                if id_ is not None:
-                    send_error(id_, -32601, f"Method not found: {method}")
+                send_error(id_, -32601, f"Unknown tool: {tool_name}")
+        elif method == "ping":
+            send_response(id_, {})
+        else:
+            if id_ is not None:
+                send_error(id_, -32601, f"Method not found: {method}")
 
 
 if __name__ == "__main__":
