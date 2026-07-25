@@ -50,12 +50,12 @@ if [ "$SOURCE" = "compact" ]; then
         # Good recovery — state was confirmed saved
         rm -f "${SESSION_DIR}/state_saved"
         cat <<'MSG'
-{"systemMessage":"SESSION RESUMED AFTER COMPACTION. You previously saved investigation state before compacting. IMMEDIATELY: (1) Use memory_scratch(operation='read', key='session-state') to retrieve your saved progress. (2) Briefly tell the user what you were working on and where you left off. (3) Resume the task from where you stopped. Do NOT ask the user to re-explain — your saved state has everything."}
+{"systemMessage":"SESSION RESUMED AFTER COMPACTION. You previously saved investigation state before compacting. IMMEDIATELY: (1) Use memory_scratch(operation='read', key='session-state') to retrieve your saved progress — if memory_scratch is unavailable, read the session-state.md fallback file under the plugin state/sessions directory instead. (2) Briefly tell the user what you were working on and where you left off. (3) Resume the task from where you stopped. Do NOT ask the user to re-explain — your saved state has everything."}
 MSG
     else
         # Degraded recovery — state_saved was never confirmed
         cat <<'MSG'
-{"systemMessage":"SESSION RESUMED AFTER COMPACTION — WARNING: State save was NOT confirmed before compaction. Recovery may be incomplete. IMMEDIATELY: (1) Try memory_scratch(operation='read', key='session-state') anyway — the save may have happened without confirmation. (2) If nothing found, use memory_recall to search for recent session context. (3) Ask the user: 'I just resumed after compaction but my saved state may be incomplete. Can you remind me what we were working on and where we left off?' (4) Do NOT pretend you remember — be honest about the gap."}
+{"systemMessage":"SESSION RESUMED AFTER COMPACTION — WARNING: State save was NOT confirmed before compaction. Recovery may be incomplete. IMMEDIATELY: (1) Try memory_scratch(operation='read', key='session-state') anyway — or check for a session-state.md fallback file under the plugin state/sessions directory; the save may have happened without confirmation. (2) If nothing found, use memory_recall to search for recent session context. (3) Ask the user: 'I just resumed after compaction but my saved state may be incomplete. Can you remind me what we were working on and where we left off?' (4) Do NOT pretend you remember — be honest about the gap."}
 MSG
     fi
 else

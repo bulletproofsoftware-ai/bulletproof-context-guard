@@ -79,6 +79,9 @@ echo "Context Guard v3.0 — Test Pipeline"
 echo "Session: ${TEST_SESSION}"
 echo "────────────────────────────────────"
 
+# First-run: the state directory does not exist until a hook has run once.
+mkdir -p "${STATE_DIR}"
+
 # Back up compaction.log if it exists
 if [ -f "${STATE_DIR}/compaction.log" ]; then
     cp "${STATE_DIR}/compaction.log" "${STATE_DIR}/compaction.log.test-backup"

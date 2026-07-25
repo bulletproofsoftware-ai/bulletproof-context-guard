@@ -94,13 +94,10 @@ The MCP server (`mcp/server.py`) advertises and dispatches exactly **one** tool:
 |------|-------------|
 | `context_budget` | 5-compartment usage breakdown + escalation tier + cost + thresholds. Optional `session_id`. |
 
-`.mcp.json` lists four names (`context_budget`, `context_compartments`, `context_velocity`,
-`context_thresholds`), but only `context_budget` is implemented in the server's
-`tools/list`. **Administrator note / known gap:** the extra three names in `.mcp.json` do
-not resolve to callable MCP tools — their data is produced by the standalone helpers
-above. Either trim `.mcp.json` to the single implemented tool, or implement the additional
-tools in `server.py`, depending on desired direction. This is flagged for human judgment,
-not silently "fixed", to avoid changing published behavior.
+`.mcp.json` declares exactly this one tool and registers the server under the
+standard `mcpServers` key with a `${CLAUDE_PLUGIN_ROOT}`-based path, so the
+declaration matches the implementation. The velocity/threshold data implied by
+the former extra tool names is produced by the standalone helpers above.
 
 ## Testing
 

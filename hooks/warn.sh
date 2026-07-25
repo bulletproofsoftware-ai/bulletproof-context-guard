@@ -84,15 +84,15 @@ if [ -f "${SESSION_DIR}/level" ]; then
             ;;
         2)
             log_warning 2 "new-escalation" "$SESSION_ID" "$MODEL_CTX"
-            printf '{"systemMessage":"CONTEXT GUARD [≤15%% to compaction] [%s]: Getting close. All Level 1 strategies apply PLUS: (1) SILENTLY save session state via memory_scratch (key: '\''session-state'\'', content: current task, key findings, next steps, important paths/values). (2) After saving, confirm by running: echo saved > %s/state_saved (3) Finish your current step then pause for user input — do NOT chain multiple steps. (4) Summarize, do not quote. (5) Keep responses to essential information only. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR"
+            printf '{"systemMessage":"CONTEXT GUARD [≤15%% to compaction] [%s]: Getting close. All Level 1 strategies apply PLUS: (1) SILENTLY save session state via memory_scratch (key: '\''session-state'\'', content: current task, key findings, next steps, important paths/values) — or, if the memory_scratch tool is not available, Write the same state to %s/session-state.md. (2) After saving, confirm by running: echo saved > %s/state_saved (3) Finish your current step then pause for user input — do NOT chain multiple steps. (4) Summarize, do not quote. (5) Keep responses to essential information only. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR" "$SESSION_DIR"
             ;;
         3)
             log_warning 3 "new-escalation" "$SESSION_ID" "$MODEL_CTX"
-            printf '{"systemMessage":"CONTEXT GUARD [≤7%% to compaction] [%s]: Context nearly full. SILENTLY save final state via memory_scratch (key: '\''session-state'\'', content: task, all findings, exact resume steps). After saving, confirm by running: echo saved > %s/state_saved. Complete only your current operation, then stop. Suggest continuing in a new session if more work remains. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR"
+            printf '{"systemMessage":"CONTEXT GUARD [≤7%% to compaction] [%s]: Context nearly full. SILENTLY save final state via memory_scratch (key: '\''session-state'\'', content: task, all findings, exact resume steps) — or, if memory_scratch is not available, Write it to %s/session-state.md. After saving, confirm by running: echo saved > %s/state_saved. Complete only your current operation, then stop. Suggest continuing in a new session if more work remains. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR" "$SESSION_DIR"
             ;;
         4)
             log_warning 4 "new-escalation" "$SESSION_ID" "$MODEL_CTX"
-            printf '{"systemMessage":"CONTEXT GUARD [≤3%% to compaction — CRITICAL] [%s]: Auto-compaction is IMMINENT. Complete only the single most important operation. Do NOT start anything new. If you have NOT already saved state, do it NOW: memory_scratch(operation='\''write'\'', key='\''session-state'\'', content=<your state>). After saving, confirm by running: echo saved > %s/state_saved. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR"
+            printf '{"systemMessage":"CONTEXT GUARD [≤3%% to compaction — CRITICAL] [%s]: Auto-compaction is IMMINENT. Complete only the single most important operation. Do NOT start anything new. If you have NOT already saved state, do it NOW: memory_scratch(operation='\''write'\'', key='\''session-state'\'', content=<your state>) — or, if memory_scratch is not available, Write the state to %s/session-state.md. After saving, confirm by running: echo saved > %s/state_saved. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR" "$SESSION_DIR"
             ;;
         *)
             echo '{}'
@@ -111,12 +111,12 @@ if [ "$CURRENT_NOTIFIED" -ge 4 ]; then
     # rule. State-saving tools (memory_scratch, Bash, Write, Edit) stay allowed.
     if [ "$TOOL_NAME" = "Task" ]; then
         log_warning 4 "blocked-task-dispatch" "$SESSION_ID" "$MODEL_CTX"
-        printf '{"decision":"block","reason":"CONTEXT GUARD [L4 EMERGENCY — %s]: Subagent dispatch BLOCKED. Context is within ~3%% of auto-compaction; a new subagent would return its full output into this thread and trigger compaction. Instead: (1) SILENTLY save state via memory_scratch (key: session-state) if not already saved, (2) confirm with: echo saved > %s/state_saved, (3) finish only the current operation, (4) tell the user to continue in a fresh session. Do NOT mention context limits unless asked."}\n' "$MODEL_CTX" "$SESSION_DIR"
+        printf '{"decision":"block","reason":"CONTEXT GUARD [L4 EMERGENCY — %s]: Subagent dispatch BLOCKED. Context is within ~3%% of auto-compaction; a new subagent would return its full output into this thread and trigger compaction. Instead: (1) SILENTLY save state via memory_scratch (key: session-state) if not already saved — or Write it to %s/session-state.md when memory_scratch is unavailable, (2) confirm with: echo saved > %s/state_saved, (3) finish only the current operation, (4) tell the user to continue in a fresh session. Do NOT mention context limits unless asked."}\n' "$MODEL_CTX" "$SESSION_DIR" "$SESSION_DIR"
         exit 0
     fi
     # Persistent reminder on every other tool use at L4.
     log_warning 4 "persistent-reminder" "$SESSION_ID" "$MODEL_CTX"
-    printf '{"systemMessage":"CONTEXT GUARD [L4 EMERGENCY — %s]: Auto-compaction imminent. Do NOT start new work or dispatch subagents. If state is not already saved, save it NOW via memory_scratch then run: echo saved > %s/state_saved. Complete only the current operation, then stop. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR"
+    printf '{"systemMessage":"CONTEXT GUARD [L4 EMERGENCY — %s]: Auto-compaction imminent. Do NOT start new work or dispatch subagents. If state is not already saved, save it NOW via memory_scratch (or Write it to %s/session-state.md when memory_scratch is unavailable) then run: echo saved > %s/state_saved. Complete only the current operation, then stop. Do NOT mention context limits to the user."}\n' "$MODEL_CTX" "$SESSION_DIR" "$SESSION_DIR"
     exit 0
 fi
 

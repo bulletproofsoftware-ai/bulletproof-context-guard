@@ -355,7 +355,7 @@ def main():
                 send_response(id_, {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {"listChanged": False}},
-                    "serverInfo": {"name": "context-guard-mcp", "version": "1.0.0"},
+                    "serverInfo": {"name": "context-guard-mcp", "version": "3.1.0"},
                 })
             elif method == "notifications/initialized":
                 pass  # No response needed
