@@ -8,9 +8,21 @@
       "name": "bulletproof-context-guard",
       "version": "3.1.0",
       "description": "Claude Code plugin: context-window monitor with 4-tier escalation and a 5-compartment usage MCP server.",
-      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
       "author": "bulletproofsoftware-ai"
-    }
+    },
+    "properties": [
+      {
+        "name": "bulletproof:hash-coverage",
+        "value": "0/4 by design. All components are system runtime prerequisites (pkg:generic) supplied by the host OS, not published packages \u2014 there is no publisher artifact to hash. This project has zero third-party library dependencies: it is Bash + Python standard library only."
+      }
+    ]
   },
   "components": [
     {
@@ -19,28 +31,52 @@
       "version": ">=3.10",
       "scope": "required",
       "description": "CPython runtime for mcp/server.py, hooks/thresholds.py, hooks/velocity.py. Standard library only.",
-      "purl": "pkg:generic/python@3.10"
+      "purl": "pkg:generic/python@3.10",
+      "properties": [
+        {
+          "name": "bulletproof:hash-status",
+          "value": "not-applicable: system runtime prerequisite, not a distributed artifact"
+        }
+      ]
     },
     {
       "type": "application",
       "name": "bash",
       "scope": "required",
       "description": "Shell runtime for the three lifecycle hooks and the status-line sensor.",
-      "purl": "pkg:generic/bash"
+      "purl": "pkg:generic/bash",
+      "properties": [
+        {
+          "name": "bulletproof:hash-status",
+          "value": "not-applicable: system runtime prerequisite, not a distributed artifact"
+        }
+      ]
     },
     {
       "type": "application",
       "name": "jq",
       "scope": "required",
       "description": "JSON processor used by the Bash hooks to parse Claude Code hook input. Degrades to safe defaults if absent.",
-      "purl": "pkg:generic/jq"
+      "purl": "pkg:generic/jq",
+      "properties": [
+        {
+          "name": "bulletproof:hash-status",
+          "value": "not-applicable: system runtime prerequisite, not a distributed artifact"
+        }
+      ]
     },
     {
       "type": "application",
       "name": "coreutils",
       "scope": "required",
       "description": "Provides date, tr, find, awk-equivalent utilities invoked by the shell scripts.",
-      "purl": "pkg:generic/coreutils"
+      "purl": "pkg:generic/coreutils",
+      "properties": [
+        {
+          "name": "bulletproof:hash-status",
+          "value": "not-applicable: system runtime prerequisite, not a distributed artifact"
+        }
+      ]
     }
   ]
 }
